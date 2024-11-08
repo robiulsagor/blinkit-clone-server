@@ -1,11 +1,13 @@
-import UserModel from "../models/user.model";
+import sendEmail from "../config/sendEmail.js";
+import UserModel from "../models/user.model.js";
 import bcrypt from "bcryptjs"
+import verifyEmailTemplate from "../utils/verifyEmailTemplate.js";
 
 const userRegister = async (req, res) => {
     try {
         const { name, email, password } = req.body;
 
-
+        // checking if any required field is missing
         if (!name || !email || !password) {
             return res.json({
                 message: "Name, email and password are required!",
@@ -14,6 +16,7 @@ const userRegister = async (req, res) => {
             })
         }
 
+        // check if user already exists
         const isExists = await UserModel.findOne({ email })
         if (isExists) {
             return res.json({
@@ -23,6 +26,7 @@ const userRegister = async (req, res) => {
             })
         }
 
+        // hash password
         const salt = await bcrypt.genSalt(10)
         const hash = await bcrypt.hash(password, salt)
 
@@ -32,6 +36,23 @@ const userRegister = async (req, res) => {
 
         const newUser = new UserModel(data)
         const saved = await newUser.save()
+
+        const VerifyEmailUrl = `${process.env.FRONTEND_URL}/verify-email?code=${saved?._id}`
+
+        const verifyEmail = await sendEmail({
+            sendTo: email,
+            subject: "Verify your email",
+            body: verifyEmailTemplate({
+                name,
+                url: VerifyEmailUrl
+            })
+        })
+
+        res.status(201).json({
+            message: "User created successfully",
+            error: false,
+            success: true
+        })
 
     } catch (error) {
         console.log(error);
