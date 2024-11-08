@@ -2,6 +2,7 @@ import sendEmail from "../config/sendEmail.js";
 import UserModel from "../models/user.model.js";
 import bcrypt from "bcryptjs"
 import verifyEmailTemplate from "../utils/verifyEmailTemplate.js";
+import { generateAccessToken, generateRefreshToken } from "../utils/token.js";
 
 const userRegister = async (req, res) => {
     try {
@@ -92,6 +93,87 @@ const verifyUser = async (req, res) => {
     })
 }
 
+const userLogin = async (req, res) => {
+    try {
+        const { email, password } = req.body;
 
+        if (!email || !password) {
+            return res.json({
+                message: "Email and password are required!",
+                error: true,
+                success: false
+            })
+        }
 
-export { userRegister, verifyUser }
+        // check if user found
+        const user = await UserModel.findOne({ email })
+        if (!user) {
+            return res.json({
+                message: "User not found!",
+                error: true,
+                success: false
+            })
+        }
+
+        // check if user is inactive or suspended
+        if (user?.status !== "Active") {
+            return res.json({
+                message: `User is ${user?.status}, Contact to Admin.`,
+                error: true,
+                success: false
+            })
+        }
+
+        // if user not verified email
+        if (!user?.email_verified) {
+            return res.json({
+                message: `Email not verified. Please verify email`,
+                error: true,
+                success: false
+            })
+        }
+
+        const checkPass = await bcrypt.compare(password, user.password)
+        if (!checkPass) {
+            return res.status(400).json({
+                message: "Email or Password is incorrect",
+                error: true,
+                success: false
+            })
+        }
+
+        await UserModel.findOneAndUpdate({ _id: user?._id }, { last_login_date: Date.now() })
+
+        const accessToken = await generateAccessToken(user?._id)
+        const refreshToken = await generateRefreshToken(user?._id)
+
+        const cookieOptions = {
+            httpOnly: true,
+            secure: true,
+            sameSite: "none"
+        }
+
+        res.cookie("accessToken", accessToken, cookieOptions)
+        res.cookie("refreshToken", refreshToken, cookieOptions)
+
+        return res.json({
+            message: "Logged In successfully!",
+            error: false,
+            success: true,
+            data: {
+                accessToken, refreshToken
+            }
+        })
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({
+            message: error.message || error,
+            error: true,
+            success: false
+        })
+
+    }
+}
+
+export { userRegister, verifyUser, userLogin }
