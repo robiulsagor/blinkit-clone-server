@@ -65,4 +65,33 @@ const userRegister = async (req, res) => {
     }
 }
 
-export { userRegister }
+const verifyUser = async (req, res) => {
+    const { code } = req.body
+
+    const user = await UserModel.findOne({ _id: code })
+    if (!user) {
+        return res.status(404).json({
+            message: "Code error",
+            error: true,
+            success: false
+        })
+    }
+
+    await UserModel.findOneAndUpdate({ _id: code }, {
+        $set: {
+            email_verified: true
+        }
+    }, {
+        new: true
+    })
+
+    return res.status(200).json({
+        message: "Email verified successfully",
+        error: false,
+        success: true
+    })
+}
+
+
+
+export { userRegister, verifyUser }
