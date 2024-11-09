@@ -144,7 +144,7 @@ const userLogin = async (req, res) => {
 
         await UserModel.findOneAndUpdate({ _id: user?._id }, { last_login_date: Date.now() })
 
-        const accessToken = await generateAccessToken(user?._id)
+        const accessToken = generateAccessToken(user?._id)
         const refreshToken = await generateRefreshToken(user?._id)
 
         const cookieOptions = {
@@ -176,4 +176,29 @@ const userLogin = async (req, res) => {
     }
 }
 
-export { userRegister, verifyUser, userLogin }
+const userLogouot = async (req, res) => {
+    try {
+        const userId = req.userId
+
+        res.clearCookie("accessToken")
+        res.clearCookie("refreshToken")
+
+        await UserModel.findOneAndUpdate({ _id: userId }, { refresh_token: "" })
+
+        res.status(500).json({
+            message: "Logout Successful",
+            error: false,
+            success: true
+        })
+
+    } catch (error) {
+        res.status(500).json({
+            message: error.message || error,
+            error: true,
+            success: false
+        })
+
+    }
+}
+
+export { userRegister, verifyUser, userLogin, userLogouot }
