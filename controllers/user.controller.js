@@ -176,7 +176,7 @@ const userLogin = async (req, res) => {
     }
 }
 
-const userLogouot = async (req, res) => {
+const userLogout = async (req, res) => {
     try {
         const userId = req.userId
 
@@ -201,4 +201,32 @@ const userLogouot = async (req, res) => {
     }
 }
 
-export { userRegister, verifyUser, userLogin, userLogouot }
+const userUploadAvatar = async (req, res) => {
+    try {
+        const userId = req.userId
+        const image = req.file
+
+        // update avatar field
+        const user = await UserModel.findByIdAndUpdate(userId.id, {
+            avatar: image.path
+        }, { new: true })
+
+        return res.json({
+            message: "ok",
+            data: {
+                _id: user._id,
+                avatar: user.avatar
+            }
+        })
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({
+            message: error.message || error,
+            error: true,
+            success: false
+        })
+    }
+}
+
+export { userRegister, verifyUser, userLogin, userLogout, userUploadAvatar }
